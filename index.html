@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>robungus1 — Click Rush</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#0f1724; --bg2:#0b1220;
+    --accent:#7c5cff; --accent2:#32d6ff;
+    --muted:#9aa4b2; --card:#0b1220aa;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+    background:
+      radial-gradient(1200px 600px at 10% 10%, rgba(124,92,255,0.10), transparent),
+      radial-gradient(800px 400px at 90% 85%, rgba(0,200,255,0.04), transparent),
+      linear-gradient(180deg,var(--bg1),var(--bg2));
+    color:#e6eef7;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+    overflow:hidden;
+  }
+
+  /* Container */
+  .container{
+    width:100%; max-width:980px;
+    background: rgba(255,255,255,0.03);
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:var(--radius);
+    box-shadow: 0 12px 50px rgba(2,6,23,0.6);
+    padding:44px;
+    text-align:center;
+    position:relative;
+    z-index:2;
+    backdrop-filter: blur(8px);
+  }
+
+  .owner{
+    font-size:36px; font-weight:800;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    margin-bottom:10px;
+    animation:float 4s ease-in-out infinite;
+  }
+
+  p { color:var(--muted); max-width:720px; margin:0 auto 26px; line-height:1.6; font-size:16px; }
+
+  .btn-group{ display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:8px; }
+  .btn{
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    color:#071021; font-weight:700; padding:12px 22px; border-radius:12px;
+    border:0; cursor:pointer; font-size:15px; box-shadow:0 8px 28px rgba(124,92,255,0.18);
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .btn:hover{ transform: translateY(-4px); box-shadow:0 18px 40px rgba(124,92,255,0.26); }
+  .small-ghost {
+    background:transparent; border:1px solid rgba(255,255,255,0.06); color:#dbe9ff;
+  }
+
+  .mute-btn{
+    position:absolute; top:14px; right:14px;
+    background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08);
+    color:#e6eef7; padding:8px 12px; border-radius:10px; cursor:pointer; z-index:3;
+  }
+
+  footer{ margin-top:26px; color:var(--muted); font-size:14px; }
+
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+  /* sparkles background */
+  .sparkles{ position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+  .sparkles span{ position:absolute; width:4px; height:4px; background:white; opacity:.16; border-radius:50%;
+    animation:sparkleMove 6s linear infinite; }
+  @keyframes sparkleMove{ from{transform:translateY(100vh) scale(.6);opacity:.45} to{transform:translateY(-10vh) scale(1);opacity:0} }
+
+  /* cursor trail */
+  .trail{ position:fixed; width:8px; height:8px; border-radius:50%;
+    background:linear-gradient(90deg,var(--accent),var(--accent2)); pointer-events:none; opacity:.6;
+    animation:fadeTrail .8s linear forwards; z-index:9999; }
+  @keyframes fadeTrail{ to{opacity:0; transform:scale(.2);} }
+
+  /* --- Game overlay (fullscreen) --- */
+  .game-overlay{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:linear-gradient(180deg, rgba(3,6,12,0.92), rgba(3,6,12,0.96)); z-index:999;
+    overflow:hidden; padding:18px;
+  }
+  .game-overlay.active{ display:flex; }
+
+  .game-panel{
+    width:100%; height:100%; position:relative; border-radius:8px; overflow:hidden;
+  }
+
+  /* HUD */
+  .hud{
+    position:absolute; top:18px; left:18px; right:18px; display:flex; justify-content:space-between; align-items:center;
+    z-index:30; pointer-events:none;
+  }
+  .hud .left, .hud .right { pointer-events:auto; display:flex; gap:12px; align-items:center; }
+  .score-box{
+    background:rgba(255,255,255,0.03); padding:10px 14px; border-radius:10px; font-weight:700; color:#e6eef7;
+    box-shadow:0 6px 18px rgba(2,6,23,0.6);
+  }
+  .misses { color:#ffb3b3; font-weight:700; }
+
+  /* center start / end UI */
+  .center-ui{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:40; text-align:center;
+    background:rgba(255,255,255,0.03); padding:22px 26px; border-radius:12px; backdrop-filter:blur(6px);
+  }
+  .countdown { font-size:48px; font-weight:900; margin-bottom:10px; color: #e6eef7; text-shadow:0 6px 30px rgba(124,92,255,.22); }
+  .center-ui small{ color:var(--muted); display:block; margin-bottom:10px; }
+
+  /* target style */
+  .target{
+    position:absolute; width:64px; height:64px; border-radius:50%;
+    background: radial-gradient(circle at 30% 30%, var(--accent2), var(--accent));
+    box-shadow:0 8px 30px rgba(124,92,255,0.28), inset 0 -6px 24px rgba(2,6,23,0.18);
+    display:flex; align-items:center; justify-content:center; color:#071021; font-weight:800; font-size:20px;
+    cursor:pointer; user-select:none; touch-action: manipulation;
+    transition: transform .12s ease, opacity .12s ease;
+  }
+  .target:active{ transform: scale(.88); }
+
+  /* small pop effect */
+  .pop {
+    position:absolute; width:80px; height:80px; border-radius:50%; pointer-events:none;
+    background: radial-gradient(circle, rgba(255,255,255,0.7), rgba(255,255,255,0.05));
+    animation:popAnim .45s ease forwards; z-index:45;
+  }
+  @keyframes popAnim{ 0%{ transform:scale(.2); opacity:1;} 100%{ transform:scale(1.6); opacity:0;} }
+
+  /* responsive */
+  @media(max-width:600px){
+    .target{ width:52px; height:52px; font-size:16px; }
+    .countdown{ font-size:36px; }
+    .container{ padding:28px; }
+    .owner{ font-size:28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- sparkles -->
+<div class="sparkles">
+  <span style="left:8%;animation-delay:0s;"></span>
+  <span style="left:28%;animation-delay:1s;"></span>
+  <span style="left:52%;animation-delay:2s;"></span>
+  <span style="left:76%;animation-delay:3s;"></span>
+  <span style="left:92%;animation-delay:4s;"></span>
+</div>
+
+<!-- main site container -->
+<div class="container" role="main">
+  <button class="mute-btn" id="muteToggle" aria-pressed="false">🔈 Mute</button>
+  <div class="owner">robungus1</div>
+  <p>Welcome to my hub — play my game, check my Roblox, or try the Click Rush mini-game for high scores. Good luck!</p>
+
+  <div class="btn-group">
+    <button class="btn" id="robloxGame">🎮 Play Roblox Game</button>
+    <button class="btn" id="robloxProfile">🧑 Roblox Profile</button>
+    <button class="btn" id="twitterProfile">🐦 Twitter Profile</button>
+    <button class="btn" id="miniGame">🟣 Play Mini-Game</button>
+  </div>
+
+  <footer>© 2025 robungus1 — All rights reserved.</footer>
+</div>
+
+<!-- fullscreen Click Rush overlay -->
+<div class="game-overlay" id="gameOverlay" aria-hidden="true">
+  <div class="game-panel" id="gamePanel" role="application" aria-label="Click Rush game">
+    <!-- HUD -->
+    <div class="hud">
+      <div class="left">
+        <div class="score-box" id="scoreBox">Score: 0</div>
+        <div class="score-box misses" id="missBox">Misses: 0 / 3</div>
+      </div>
+      <div class="right">
+        <div class="score-box" id="highBox">High: 0</div>
+        <button class="btn small-ghost" id="exitBtn">Exit</button>
+      </div>
+    </div>
+
+    <!-- center UI (start / countdown / end) -->
+    <div class="center-ui" id="centerUI">
+      <div id="centerInner">
+        <div class="countdown" id="countdownText">Ready?</div>
+        <small id="centerHint">Click start to begin. Miss 3 and it's game over.</small>
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:6px">
+          <button class="btn" id="startBtn">Start</button>
+          <button class="btn small-ghost" id="closeOverlayBtn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- target area -->
+    <div id="playfield" style="position:absolute;inset:0;overflow:hidden;"></div>
+  </div>
+</div>
+
+<!-- background music (optional file) -->
+<audio id="bgMusic" loop>
+  <source src="background.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+/* ------------------------------
+   Basic links & controls
+   ------------------------------ */
+const ROBLOX_GAME_ID = 110817909755069;
+document.getElementById('robloxGame').onclick = () => window.open(`https://www.roblox.com/games/${ROBLOX_GAME_ID}`, '_blank');
+document.getElementById('robloxProfile').onclick = () => window.open("https://www.roblox.com/users/profile?username=robungus1", '_blank');
+document.getElementById('twitterProfile').onclick = () => window.open("https://twitter.com/robungus1", '_blank');
+
+/* ------------------------------
+   Audio: background + SFX via WebAudio
+   - SFX generated so no files are needed.
+   ------------------------------ */
+const bgMusic = document.getElementById('bgMusic');
+bgMusic.volume = 0.36; // gentle
+let audioCtx = null;
+let soundEnabled = true;
+
+function ensureAudioCtx(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+
+/* simple tone */
+function playTone(freq=880, duration=0.08, type='sine', vol=0.12){
+  if(!soundEnabled) return;
+  ensureAudioCtx();
+  const ctx = audioCtx;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.value = vol;
+  o.connect(g); g.connect(ctx.destination);
+  o.start();
+  g.gain.setValueAtTime(vol, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+  o.stop(ctx.currentTime + duration + 0.02);
+}
+
+/* success beep (pleasant short chord) */
+function successSound(){
+  if(!soundEnabled) return;
+  ensureAudioCtx();
+  // quick pair of tones
+  playTone(880, 0.06, 'sine', 0.10);
+  setTimeout(()=>playTone(1100, 0.05, 'sine', 0.08), 50);
+}
+
+/* miss sound */
+function missSound(){
+  if(!soundEnabled) return;
+  ensureAudioCtx();
+  playTone(240, 0.12, 'sine', 0.09);
+}
+
+/* toggle mute: both music and sfx */
+const muteBtn = document.getElementById('muteToggle');
+let muted = false;
+muteBtn.addEventListener('click', () => {
+  muted = !muted;
+  soundEnabled = !muted;
+  bgMusic.muted = muted;
+  muteBtn.textContent = muted ? '🔇 Unmute' : '🔈 Mute';
+  // resume audio context on first unmute if needed
+  if(!muted && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+});
+/* try autoplay - browsers often block until gesture */
+bgMusic.play().catch(()=>{ /* ignored */ });
+
+/* ------------------------------
+   Cursor trail
+   ------------------------------ */
+document.addEventListener('mousemove', e => {
+  const t = document.createElement('div');
+  t.className = 'trail';
+  t.style.left = `${e.pageX-6}px`;
+  t.style.top  = `${e.pageY-6}px`;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 700);
+});
+
+/* ------------------------------
+   Click Rush game
+   ------------------------------ */
+const overlay = document.getElementById('gameOverlay');
+const playfield = document.getElementById('playfield');
+const centerUI = document.getElementById('centerUI');
+const countdownText = document.getElementById('countdownText');
+const scoreBox = document.getElementById('scoreBox');
+const missBox = document.getElementById('missBox');
+const highBox = document.getElementById('highBox');
+const startBtn = document.getElementById('startBtn');
+const exitBtn = document.getElementById('exitBtn');
+const closeOverlayBtn = document.getElementById('closeOverlayBtn');
+const miniBtn = document.getElementById('miniGame');
+
+let score = 0;
+let misses = 0;
+let highScore = parseInt(localStorage.getItem('clickRushHigh') || '0', 10);
+highBox.textContent = 'High: ' + highScore;
+
+let spawnIntervalId = null;
+let activeTargets = new Set();
+let spawnInterval = 900;      // initial spawn rate (ms)
+let visibleDuration = 1100;   // how long a target stays (ms)
+let rampFactor = 0.94;        // how quickly durations shrink per step
+let minVisible = 400;         // fastest targets
+let minSpawn = 300;
+let maxConcurrent = 6;        // cap concurrent targets
+let running = false;
+
+/* helper: random position inside playfield with margins */
+function randomPos(size){
+  const pad = 12;
+  const w = window.innerWidth - size - pad*2;
+  const h = window.innerHeight - size - pad*2;
+  const x = Math.max(pad, Math.random()*w + pad);
+  const y = Math.max(pad, Math.random()*h + pad);
+  return {x,y};
+}
+
+/* spawn a target */
+function spawnTarget(){
+  if(activeTargets.size >= maxConcurrent) return;
+  const size = Math.max(48, Math.round(64 * (0.9 + Math.random()*0.6))); // varied size
+  const t = document.createElement('div');
+  t.className = 'target';
+  t.style.width = size+'px';
+  t.style.height = size+'px';
+  // set position
+  const pos = randomPos(size);
+  t.style.left = pos.x + 'px';
+  t.style.top  = pos.y + 'px';
+  // small label (optional) shows points or just decoration
+  // t.textContent = '+';
+  playfield.appendChild(t);
+  activeTargets.add(t);
+
+  // animate subtle floating movement
+  const dx = (Math.random()*2-1)*12; const dy = (Math.random()*2-1)*12;
+  t.animate([{transform:'translate(0,0)'},{transform:`translate(${dx}px,${dy}px)`}], {duration:2000 + Math.random()*3000, direction:'alternate', iterations:Infinity, easing:'ease-in-out'});
+
+  // touch and click handlers
+  const handleHit = (ev) => {
+    ev.stopPropagation();
+    if(!running) return;
+    successSound();
+    createPopEffect(t);
+    score += 1;
+    scoreBox.textContent = 'Score: ' + score;
+    // cleanup
+    clearTimeout(t._expireTimer);
+    t.remove();
+    activeTargets.delete(t);
+    // difficulty ramp: slightly faster after each hit
+    if(score % 5 === 0){
+      visibleDuration = Math.max(minVisible, visibleDuration * rampFactor);
+      spawnInterval = Math.max(minSpawn, spawnInterval * rampFactor);
+    }
+  };
+  t.addEventListener('pointerdown', handleHit, {passive:true});
+  // expire timer => counts as miss
+  t._expireTimer = setTimeout(() => {
+    if(!running) return;
+    // remove
+    t.remove();
+    activeTargets.delete(t);
+    misses += 1;
+    missBox.textContent = `Misses: ${misses} / 3`;
+    missSound();
+    // show small flash at last position
+    createMissFlash(pos.x, pos.y);
+    if(misses >= 3) {
+      gameOver();
+    }
+  }, visibleDuration);
+
+  // safety: remove references on removal
+  t.addEventListener('remove', ()=>{ activeTargets.delete(t); });
+}
+
+/* pop visual */
+function createPopEffect(target){
+  const rect = target.getBoundingClientRect();
+  const pop = document.createElement('div');
+  pop.className = 'pop';
+  pop.style.left = (rect.left + rect.width/2 - 40) + 'px';
+  pop.style.top  = (rect.top  + rect.height/2 - 40) + 'px';
+  document.body.appendChild(pop);
+  setTimeout(()=>pop.remove(), 500);
+}
+
+/* miss flash */
+function createMissFlash(x,y){
+  const pop = document.createElement('div');
+  pop.className = 'pop';
+  pop.style.background = 'radial-gradient(circle, rgba(255,100,100,0.9), rgba(255,100,100,0.06))';
+  pop.style.left = (x - 16) + 'px';
+  pop.style.top  = (y - 16) + 'px';
+  pop.style.width = '64px'; pop.style.height = '64px';
+  document.body.appendChild(pop);
+  setTimeout(()=>pop.remove(), 500);
+}
+
+/* start spawning at intervals */
+function startSpawning(){
+  if(spawnIntervalId) clearInterval(spawnIntervalId);
+  spawnIntervalId = setInterval(spawnTarget, Math.max(200, spawnInterval));
+  // also spawn immediately a few times to kick off
+  for(let i=0;i<3;i++) setTimeout(spawnTarget, i*120);
+}
+
+/* stop spawning & clear targets */
+function clearAllTargets(){
+  if(spawnIntervalId){ clearInterval(spawnIntervalId); spawnIntervalId = null; }
+  activeTargets.forEach(t => {
+    if(t._expireTimer) clearTimeout(t._expireTimer);
+    try{ t.remove(); }catch(e){}
+  });
+  activeTargets.clear();
+}
+
+/* game loop: start, countdown, running, gameover */
+function openOverlay(){
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+  centerUI.style.display = 'block';
+  countdownText.textContent = 'Ready?';
+  score = 0; misses = 0;
+  spawnInterval = 900; visibleDuration = 1100;
+  scoreBox.textContent = 'Score: 0';
+  missBox.textContent = 'Misses: 0 / 3';
+  highBox.textContent = 'High: ' + highScore;
+  running = false;
+  // ensure audio context resumed on first user gesture (some browsers block)
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+}
+
+function closeOverlay(){
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  clearAllTargets();
+  running = false;
+  centerUI.style.display = 'none';
+}
+
+/* countdown then start */
+async function startGameSequence(){
+  // hide close option during countdown
+  countdownText.textContent = '';
+  centerUI.style.display = 'block';
+  const seq = ['3','2','1','GO!'];
+  for(let i=0;i<seq.length;i++){
+    countdownText.textContent = seq[i];
+    // big beep on numbers
+    if(seq[i] !== 'GO!') playTone(880 - i*80, 0.09, 'sine', 0.08);
+    else playTone(1200, 0.09, 'sine', 0.12);
+    await new Promise(r => setTimeout(r, i===seq.length-1 ? 600 : 700));
+  }
+  // start
+  centerUI.style.display = 'none';
+  running = true;
+  score = 0; misses = 0;
+  scoreBox.textContent = 'Score: 0';
+  missBox.textContent = 'Misses: 0 / 3';
+  // spawn
+  startSpawning();
+}
+
+/* end game */
+function gameOver(){
+  running = false;
+  clearAllTargets();
+  // save high score
+  if(score > highScore){
+    highScore = score;
+    localStorage.setItem('clickRushHigh', highScore);
+  }
+  // show center UI result
+  centerUI.style.display = 'block';
+  const inner = document.getElementById('centerInner');
+  inner.innerHTML = `
+    <div style="margin-bottom:6px"><strong style="font-size:20px">Game Over</strong></div>
+    <div style="font-size:20px;margin-bottom:6px">Score: <strong>${score}</strong></div>
+    <div style="color:var(--muted);margin-bottom:10px">Best: <strong>${highScore}</strong></div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:6px">
+      <button class="btn" id="replayBtn">Play Again</button>
+      <button class="btn small-ghost" id="exitAfterBtn">Exit</button>
+    </div>
+  `;
+  // attach handlers
+  document.getElementById('replayBtn').onclick = () => {
+    inner.innerHTML = `<div class="countdown" id="countdownText">Ready?</div>
+      <small id="centerHint">Click start to begin. Miss 3 and it's game over.</small>
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:6px">
+        <button class="btn" id="startBtn">Start</button>
+        <button class="btn small-ghost" id="closeOverlayBtn">Close</button>
+      </div>`;
+    // re-bind start & close
+    document.getElementById('startBtn').onclick = startGameSequence;
+    document.getElementById('closeOverlayBtn').onclick = closeOverlay;
+    // update score displays
+    scoreBox.textContent = 'Score: 0';
+    missBox.textContent = 'Misses: 0 / 3';
+    // update high
+    highBox.textContent = 'High: ' + highScore;
+  };
+  document.getElementById('exitAfterBtn').onclick = closeOverlay;
+}
+
+/* attach initial handlers */
+startBtn.onclick = startGameSequence;
+miniBtn.onclick = openOverlay;
+exitBtn.onclick = closeOverlay;
+closeOverlayBtn.onclick = closeOverlay;
+
+/* keyboard: Esc to close overlay */
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && overlay.classList.contains('active')) closeOverlay();
+});
+
+/* ensure we clean timers when unloading */
+window.addEventListener('beforeunload', () => {
+  clearAllTargets();
+  if(spawnIntervalId) clearInterval(spawnIntervalId);
+});
+
+/* try to resume audio context on first interaction so SFX works */
+function unlockAudioOnFirstGesture(){
+  if(!audioCtx) return;
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  window.removeEventListener('pointerdown', unlockAudioOnFirstGesture);
+}
+window.addEventListener('pointerdown', unlockAudioOnFirstGesture);
+
+/* simple helper playTone re-used in countdown */
+function playTone(freq, dur, type, vol){
+  if(!soundEnabled) return;
+  ensureAudioCtx();
+  const ctx = audioCtx;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type || 'sine';
+  o.frequency.value = freq || 880;
+  g.gain.value = vol || 0.08;
+  o.connect(g); g.connect(ctx.destination);
+  o.start();
+  g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+  o.stop(ctx.currentTime + dur + 0.02);
+}
+</script>
+</body>
+</html>
+
